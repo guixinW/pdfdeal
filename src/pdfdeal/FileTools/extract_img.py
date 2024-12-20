@@ -5,7 +5,7 @@ import os
 import hashlib
 from ..Doc2X.Exception import nomal_retry
 import concurrent.futures
-import logging
+
 import uuid
 
 
@@ -79,6 +79,7 @@ def md_replace_imgs(
     Returns:
         bool: If all images are downloaded successfully, return True, else return False.
     """
+    flag = True
     if isinstance(replace, str) and replace == "local":
         pass
     elif isinstance(replace, Callable):
@@ -91,7 +92,7 @@ def md_replace_imgs(
 
     imglist, imgpath = get_imgcdnlink_list(content)
     if len(imglist) == 0:
-        logging.warning("No image links found in the markdown file.")
+        print("No image links found in the markdown file.")
         return True
 
     no_outputppath_flag = False
@@ -100,14 +101,14 @@ def md_replace_imgs(
         outputpath = os.path.splitext(mdfile)[0] + "_img"
     os.makedirs(outputpath, exist_ok=True)
 
-    logging.info(f"Start to download images from file {mdfile}")
+    print(f"Start to download images from file {mdfile}")
 
     def download_image(i, imgurl, outputpath, relative, mdfile):
         if not imgurl.startswith("http"):
-            logging.info(f"Not a valid url: {imgurl}, Skip it.")
+            print(f"Not a valid url: {imgurl}, Skip it.")
             return None
         elif skip and imgurl.startswith(skip):
-            logging.info(f"Skip the image: {imgurl}, because it starts with {skip}.")
+            print(f"Skip the image: {imgurl}, because it starts with {skip}.")
             return None
         try:
             savepath = f"{outputpath}/img{i}"
@@ -120,9 +121,7 @@ def md_replace_imgs(
                 savepath = os.path.abspath(savepath)
                 return (imglist[i], f"![{imgurl}](<{savepath}>)\n")
         except Exception as e:
-            logging.warning(
-                f"Error to download the image: {imgurl}, keep original url:\n {e}"
-            )
+            print(f"Error to download the image: {imgurl}, keep original url:\n {e}")
             return None
 
     replacements = []
@@ -147,7 +146,7 @@ def md_replace_imgs(
         content = content.replace(old, new)
 
     if len(replacements) < len(imglist):
-        logging.info(
+        print(
             "Some images were not downloaded successfully. Original URLs have been kept."
         )
         flag = False
@@ -158,7 +157,7 @@ def md_replace_imgs(
         @nomal_retry()
         def upload_task(i, img_path, replace):
             if img_path.startswith("http://") or img_path.startswith("https://"):
-                logging.info(f"Skip the image: {img_path}, because it is a url.")
+                print(f"Skip the image: {img_path}, because it is a url.")
                 return None, None, None
             if os.path.isabs(img_path) is False:
                 img_path = os.path.join(os.path.dirname(mdfile), img_path)
@@ -172,7 +171,7 @@ def md_replace_imgs(
                         os.rename(img_path, new_local_path)
                         img_path = new_local_path  # 更新img_path为新的路径
                     except Exception as e:
-                        logging.warning(
+                        print(
                             f"Failed to rename file {img_path} to {new_local_path}: {e}"
                         )
                 if path_style:
@@ -187,13 +186,13 @@ def md_replace_imgs(
                     img_url = f"![{os.path.splitext(os.path.basename(mdfile))[0]}](<{new_url}>)\n"
                     return img_url, True, i
                 else:
-                    logging.error(
+                    print(
                         f"Error to upload the image: {img_path}, {new_url}, keeping original path."
                     )
                     return new_url, False, i
-            except Exception:
-                logging.exception(
-                    f"=====\nError to upload the image: {img_path}, keeping original path:"
+            except Exception as e:
+                print(
+                    f"=====\nError to upload the image: {img_path}, as {e} keeping original path:"
                 )
                 return None, False, i
 
@@ -209,7 +208,7 @@ def md_replace_imgs(
                 elif flag is None:
                     pass
                 else:
-                    logging.warning(
+                    print(
                         f"=====\nError to upload the image: {imgpath[i]}, keeping original path."
                     )
                     flag = False
@@ -225,12 +224,12 @@ def md_replace_imgs(
                 if not os.listdir(outputpath):
                     os.rmdir(outputpath)
             except Exception as e:
-                logging.error(f"\nError to remove the folder: {outputpath}, {e}")
+                print(f"\nError to remove the folder: {outputpath}, {e}")
 
     with open(mdfile, "w", encoding="utf-8") as file:
         file.write(content)
 
-    logging.info(f"Finish to process images in file {mdfile}.")
+    print(f"Finish to process images in file {mdfile}.")
     return flag
 
 
@@ -243,7 +242,7 @@ def mds_replace_imgs(
     threads: int = 2,
     down_load_threads: int = 3,
     path_style: bool = False,
-    uuid_raname: bool = False,
+    uuid_rename: bool = False,
 ) -> Tuple[list, list, bool]:
     """Replace the image links in the markdown file (cdn links -> local file).
 
@@ -256,7 +255,7 @@ def mds_replace_imgs(
         threads (int, optional): The number of threads to download the images. Defaults to 2.
         down_load_threads (int, optional): The number of threads to download the images in one md file. Defaults to 3.
         path_style (bool, optional): Whether to use path style when uploading to OSS. If True, the path will be /{filename}/{md5}.{extension}. Defaults to False.
-        uuid_raname (bool, optioonal): Rename the file with uuid if need, Defaults to False.
+        uuid_rename (bool, optioonal): Rename the file with uuid if need, Defaults to False.
 
     Returns:
         Tuple[list, list, bool]:
@@ -275,7 +274,7 @@ def mds_replace_imgs(
 
     mdfiles = gen_folder_list(path=path, mode="md", recursive=True)
     if len(mdfiles) == 0:
-        logging.warning("No markdown file found in the path.")
+        print("No markdown file found in the path.")
         return [], [], True
 
     import concurrent.futures
@@ -290,7 +289,7 @@ def mds_replace_imgs(
                 skip=skip,
                 threads=down_load_threads,
                 path_style=path_style,
-                uuid_rename=uuid_raname,
+                uuid_rename=uuid_rename,
             )
             return mdfile, None
         except Exception as e:
@@ -310,18 +309,18 @@ def mds_replace_imgs(
             if error:
                 Fail_flag = False
                 fail_files.append({"error": str(error), "path": mdfile})
-                logging.warning(
+                print(
                     f"Error to process the markdown file: {mdfile}, {error}, continue to process the next markdown file."
                 )
             else:
                 success_files.append(mdfile)
 
-    logging.info(
+    print(
         f"\n[MARKDOWN REPLACE] Successfully processed {len(success_files)}/{len(mdfiles)} markdown files."
     )
 
     if Fail_flag is False:
-        logging.info("Some markdown files process failed.")
+        print("Some markdown files process failed.")
         return success_files, fail_files, True
 
     return success_files, fail_files, False
