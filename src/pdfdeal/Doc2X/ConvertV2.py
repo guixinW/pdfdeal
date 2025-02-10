@@ -11,6 +11,23 @@ Base_URL = "https://v2.doc2x.noedgeai.com/api"
 
 logger = logging.getLogger("pdfdeal.convertV2")
 
+# Add new error codes for image processing
+IMAGE_ERROR_CODES = {
+    "parse_quota_limit": "可用的解析额度不足 (Insufficient parsing quota)",
+    "parse_error": "解析错误 (Parsing error)",
+    "parse_file_invalid": "解析文件错误或者不合法 (Invalid or illegal image file)",
+    "request_limit_exceeded": "请求频率超过限制 (Request frequency limit exceeded)",
+    "parse_file_too_large": "单个图片大小超过限制 (Image size exceeds limit)",
+}
+
+IMAGE_ERROR_SOLUTIONS = {
+    "parse_quota_limit": "当前可用的额度不够 (Current available quota is insufficient)",
+    "parse_error": "图片内容无法解析，请反馈给我们 (Image content cannot be parsed, please provide feedback)",
+    "parse_file_invalid": "无法解析这个图片，一般是图片不合法 (Cannot parse this image, usually due to invalid format)",
+    "request_limit_exceeded": "请等待一段时间后再请求 (Please wait for a while before making another request)",
+    "parse_file_too_large": "当前允许单个图片大小 <= 3M，尝试对图片进行压缩 (Current single image size limit is <= 3M, try compressing the image)",
+}
+
 
 @async_retry(timeout=200)
 async def upload_pdf(apikey: str, pdffile: str, oss_choose: str = "always") -> str:
@@ -369,3 +386,130 @@ async def download_file(
             f.write(response.content)
 
     return file_path
+
+
+async def image_code_check(code: str, trace_id: str = None):
+    """Check image processing error codes and raise appropriate exceptions
+
+    Args:
+        code (str): The error code to check
+        trace_id (str, optional): The trace ID for debugging. Defaults to None.
+
+    Raises:
+        RateLimit: When rate limit is reached
+        RequestError: When a known error occurs
+        ValueError: When API key is unauthorized
+        Exception: When an unknown error occurs
+    """
+    if code == "request_limit_exceeded":
+        raise RateLimit(trace_id=trace_id)
+    if code in IMAGE_ERROR_CODES:
+        raise RequestError(code, trace_id=trace_id)
+    if code == "unauthorized":
+        raise ValueError("API key is unauthorized. (认证失败，请检测API key是否正确)")
+    if code not in ["ok", "success"]:
+        raise Exception(f"Unknown error code: {code}, Trace ID: {trace_id}")
+
+
+@async_retry()
+async def parse_image_ocr(apikey: str, image_path: str) -> dict:
+    """Parse image using OCR
+
+    Args:
+        apikey (str): The API key
+        image_path (str): Path to the image file
+
+    Raises:
+        FileError: If file size exceeds limit or file cannot be opened
+        RateLimit: If rate limit is reached
+        RequestError: If parsing fails
+        Exception: For any other errors
+
+    Returns:
+        dict: The parsed OCR results
+    """
+    # Check file size
+    if os.path.getsize(image_path) > 3 * 1024 * 1024:  # 3MB
+        raise FileError("Image file size exceeds 3MB limit")
+
+    url = f"{Base_URL}/v2/parse/img/ocr"
+
+    try:
+        with open(image_path, "rb") as f:
+            file = f.read()
+    except Exception as e:
+        raise FileError(f"Open file error! {e}")
+
+    async with httpx.AsyncClient(timeout=httpx.Timeout(30), http2=True) as client:
+        response = await client.post(
+            url,
+            headers={
+                "Authorization": f"Bearer {apikey}",
+            },
+            content=file,
+        )
+
+    trace_id = response.headers.get("trace-id", "Failed to get trace-id")
+
+    if response.status_code == 429:
+        raise RateLimit(trace_id=trace_id)
+
+    if response.status_code != 200:
+        raise Exception(f"Image OCR failed: {response.status_code}:{response.text}")
+
+    data = response.json()
+    await image_code_check(data.get("code", ""), trace_id=trace_id)
+
+    return data.get("data", {})
+
+
+@async_retry()
+async def parse_image_layout(apikey: str, image_path: str) -> dict:
+    """Parse image layout
+
+    Args:
+        apikey (str): The API key
+        image_path (str): Path to the image file
+
+    Raises:
+        FileError: If file size exceeds limit or file cannot be opened
+        RateLimit: If rate limit is reached
+        RequestError: If parsing fails
+        Exception: For any other errors
+
+    Returns:
+        dict: The parsed layout results
+    """
+    # Check file size
+    if os.path.getsize(image_path) > 3 * 1024 * 1024:  # 3MB
+        raise FileError("Image file size exceeds 3MB limit")
+
+    url = f"{Base_URL}/v2/parse/img/layout"
+
+    try:
+        with open(image_path, "rb") as f:
+            file = f.read()
+    except Exception as e:
+        raise FileError(f"Open file error! {e}")
+
+    async with httpx.AsyncClient(timeout=httpx.Timeout(30), http2=True) as client:
+        response = await client.post(
+            url,
+            headers={"Authorization": f"Bearer {apikey}"},
+            content=file,
+        )
+
+    trace_id = response.headers.get("trace-id", "Failed to get trace-id")
+
+    if response.status_code == 429:
+        raise RateLimit(trace_id=trace_id)
+
+    if response.status_code != 200:
+        raise Exception(
+            f"Image layout parsing failed: {response.status_code}:{response.text}"
+        )
+
+    data = response.json()
+    await image_code_check(data.get("code", ""), trace_id=trace_id)
+
+    return data.get("data", {})
