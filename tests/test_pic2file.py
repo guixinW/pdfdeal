@@ -1,56 +1,47 @@
-# from pdfdeal import Doc2X
-# from pdfdeal.file_tools import get_files
-# import os
-# import logging
+from pdfdeal import Doc2X
+from pdfdeal.file_tools import get_files
+import logging
 
-# httpx_logger = logging.getLogger("httpx")
-# httpx_logger.setLevel(logging.WARNING)
-# logging.basicConfig(level=logging.INFO)
-
-
-# def test_single_pic2file():
-#     client = Doc2X()
-#     filepath, _, _ = client.pic2file(
-#         image_file="tests/image/sample.png",
-#         output_path="./Output/test/single/pic2file",
-#         output_names=["pic_sample1.docx"],
-#         output_format="docx",
-#     )
-#     if filepath[0] != "":
-#         assert os.path.exists(filepath[0])
-#         assert os.path.isfile(filepath[0])
-#         assert filepath[0].endswith(".docx")
-#         assert os.path.basename(filepath[0]) == "pic_sample1.docx"
+httpx_logger = logging.getLogger("httpx")
+httpx_logger.setLevel(logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 
 
-# def test_multiple_pic2file():
-#     client = Doc2X()
-#     file_list, rename = get_files("tests/image", "img", "docx")
-#     success, failed, flag = client.pic2file(
-#         image_file=file_list,
-#         output_path="./Output/test/multiple/pic2file",
-#         output_names=rename,
-#         output_format="docx",
-#     )
-#     assert flag
-#     assert len(success) == len(failed) == 3
-#     for s in success:
-#         if s != "":
-#             assert s.endswith("sample1.docx") or s.endswith("sample.docx")
+def test_picocr():
+    client = Doc2X()
+    # Test single file OCR
+    results, errors, has_error = client.picocr("tests/image/sample.png")
+    assert not has_error
+    assert len(results) == 1
+    assert isinstance(results, dict)
+    first_result = next(iter(results.values()))
+    assert isinstance(first_result, dict)
+    assert "text" in first_result or "texts" in first_result
+
+    # Test multiple files OCR
+    file_list, _ = get_files("tests/image", "img", None)
+    results, errors, has_error = client.picocr(file_list)
+    assert len(results) == len(file_list)
+    for result in results.values():
+        assert isinstance(result, dict)
+        assert "text" in result or "texts" in result
 
 
-# # def test_multiple_high_rpm():
-# #     client = Doc2X()
-# #     file_list = ["tests/image/sample.png" for _ in range(20)]
-# #     success, failed, flag = client.pic2file(
-# #         image_file=file_list,
-# #         output_path="./Output/test",
-# #     )
-# #     assert len(success) == len(failed) == 20
-# #     i = 0
-# #     for s in success:
-# #         if s != "":
-# #             assert s.endswith(".zip")
-# #         else:
-# #             i += 1
-# #     print(f"===Failed {i} times===")
+def test_piclayout():
+    client = Doc2X()
+    # Test single file layout analysis
+    results, errors, has_error = client.piclayout("tests/image/sample.png")
+    assert not has_error
+    assert len(results) == 1
+    assert isinstance(results, dict)
+    first_result = next(iter(results.values()))
+    assert isinstance(first_result, dict)
+    assert "layout" in first_result or "layouts" in first_result
+
+    # Test multiple files layout analysis
+    file_list, _ = get_files("tests/image", "img", None)
+    results, errors, has_error = client.piclayout(file_list)
+    assert len(results) == len(file_list)
+    for result in results.values():
+        assert isinstance(result, dict)
+        assert "layout" in result or "layouts" in result

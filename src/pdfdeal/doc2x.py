@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import Tuple, List
+from typing import Tuple, List, Dict, Union, Optional
 import logging
 from .Doc2X.ConvertV2 import (
     upload_pdf,
@@ -14,6 +14,7 @@ from .Doc2X.Pages import get_pdf_page_count
 from .Doc2X.Exception import RequestError, RateLimit, run_async
 from .FileTools.file_tools import get_files
 import time
+from .doc2x_img import ImageProcessor
 
 logger = logging.getLogger(name="pdfdeal.doc2x")
 
@@ -157,6 +158,7 @@ class Doc2X:
         self.max_pages = max_pages
         self.request_interval = 0.1
         self.full_speed = full_speed
+        self._image_processor = None
 
         handler = logging.StreamHandler()
         formatter = logging.Formatter(
@@ -169,6 +171,59 @@ class Doc2X:
         if debug:
             logging.getLogger("pdfdeal").setLevel(logging.DEBUG)
         self.debug = debug
+
+    @property
+    def image_processor(self) -> ImageProcessor:
+        """Lazy initialization of ImageProcessor"""
+        if self._image_processor is None:
+            self._image_processor = ImageProcessor(self.apikey)
+        return self._image_processor
+
+    def picocr(
+        self,
+        pic_file,
+        concurrent_limit: Optional[int] = None,
+    ) -> tuple[Dict[str, Dict[str, Union[dict, str]]], List[dict], bool]:
+        """Process image files with OCR
+
+        Args:
+            pic_file (str | List[str]): Path to image file(s) or directory
+            concurrent_limit (int, optional): Maximum number of concurrent tasks. Defaults to thread value.
+
+        Returns:
+            Tuple containing:
+                - Dictionary mapping file paths to their OCR results
+                - List of dictionaries containing error information
+                - Boolean indicating if any errors occurred
+        """
+        return self.image_processor.pic2file(
+            pic_file=pic_file,
+            process_type="ocr",
+            concurrent_limit=concurrent_limit or self.thread,
+        )
+
+    def piclayout(
+        self,
+        pic_file,
+        concurrent_limit: Optional[int] = None,
+    ) -> tuple[Dict[str, Dict[str, Union[dict, str]]], List[dict], bool]:
+        """Process image files with layout analysis
+
+        Args:
+            pic_file (str | List[str]): Path to image file(s) or directory
+            concurrent_limit (int, optional): Maximum number of concurrent tasks. Defaults to thread value.
+
+        Returns:
+            Tuple containing:
+                - Dictionary mapping file paths to their layout analysis results
+                - List of dictionaries containing error information
+                - Boolean indicating if any errors occurred
+        """
+        return self.image_processor.pic2file(
+            pic_file=pic_file,
+            process_type="layout",
+            concurrent_limit=concurrent_limit or self.thread,
+        )
 
     async def pdf2file_back(
         self,
