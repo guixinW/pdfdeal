@@ -6,6 +6,7 @@ from typing import Tuple
 from .Exception import RateLimit, FileError, RequestError, async_retry, code_check
 import logging
 from .Types import OutputFormat
+import base64
 
 Base_URL = "https://v2.doc2x.noedgeai.com/api"
 
@@ -426,7 +427,7 @@ async def parse_image_ocr(apikey: str, image_path: str) -> dict:
         Exception: For any other errors
 
     Returns:
-        dict: The parsed OCR results
+        dict: The parsed OCR results containing tex_lines
     """
     # Check file size
     if os.path.getsize(image_path) > 3 * 1024 * 1024:  # 3MB
@@ -460,16 +461,21 @@ async def parse_image_ocr(apikey: str, image_path: str) -> dict:
     data = response.json()
     await image_code_check(data.get("code", ""), trace_id=trace_id)
 
-    return data.get("data", {})
+    return data.get("data", {}).get("tex_lines", []), data.get("data", {}).get(
+        "uid", "Failed to get uid"
+    )
 
 
 @async_retry()
-async def parse_image_layout(apikey: str, image_path: str) -> dict:
+async def parse_image_layout(
+    apikey: str, image_path: str, zip_path: str = None
+) -> tuple[list, str]:
     """Parse image layout
 
     Args:
         apikey (str): The API key
         image_path (str): Path to the image file
+        zip_path (str, optional): Path to save the zip file containing images. Defaults to image_name + 'picture.zip'.
 
     Raises:
         FileError: If file size exceeds limit or file cannot be opened
@@ -478,8 +484,13 @@ async def parse_image_layout(apikey: str, image_path: str) -> dict:
         Exception: For any other errors
 
     Returns:
-        dict: The parsed layout results
+        tuple: A tuple containing:
+            - list: List of page dictionaries with page dimensions and md content
+            - str: The unique identifier (uid) of the request
     """
+    if zip_path is None:
+        base_name = os.path.splitext(os.path.basename(image_path))[0]
+        zip_path = f"{base_name}picture.zip"
     # Check file size
     if os.path.getsize(image_path) > 3 * 1024 * 1024:  # 3MB
         raise FileError("Image file size exceeds 3MB limit")
@@ -512,4 +523,13 @@ async def parse_image_layout(apikey: str, image_path: str) -> dict:
     data = response.json()
     await image_code_check(data.get("code", ""), trace_id=trace_id)
 
-    return data.get("data", {})
+    # Save zip file if path provided and zip content exists
+    if zip_path and data.get("data", {}).get("convert_zip"):
+        zip_content = base64.b64decode(data["data"]["convert_zip"])
+        with open(zip_path, "wb") as f:
+            f.write(zip_content)
+
+    return (
+        data.get("data", {}).get("result", {}).get("pages", []),
+        data.get("data", {}).get("uid", "Failed to get uid"),
+    )

@@ -199,30 +199,47 @@ class Doc2X:
         return self.image_processor.pic2file(
             pic_file=pic_file,
             process_type="ocr",
-            concurrent_limit=concurrent_limit or self.thread,
+            concurrent_limit=concurrent_limit,
         )
 
     def piclayout(
         self,
-        pic_file,
-        concurrent_limit: Optional[int] = None,
-    ) -> tuple[Dict[str, Dict[str, Union[dict, str]]], List[dict], bool]:
-        """Process image files with layout analysis
+        pic_file: str,
+        zip_path: Optional[str] = None,
+        concurrent_limit: Optional[int] = 5,
+    ) -> tuple[List[Union[list, str]], List[dict], bool]:
+        """Process a single image file with layout analysis
 
         Args:
-            pic_file (str | List[str]): Path to image file(s) or directory
-            concurrent_limit (int, optional): Maximum number of concurrent tasks. Defaults to thread value.
+            pic_file (str): Path to a single image file (jpg/png)
+            zip_path (str, optional): Path to save the zip file containing images. Defaults to None.
+            concurrent_limit (int, optional): Maximum number of concurrent tasks. Defaults to 5.
 
         Returns:
             Tuple containing:
-                - Dictionary mapping file paths to their layout analysis results
+                - List containing the layout analysis result (empty string if failed)
                 - List of dictionaries containing error information
                 - Boolean indicating if any errors occurred
+
+        Raises:
+            ValueError: If the input file is not a jpg/png file or doesn't exist
         """
+        # Validate file exists
+        if not os.path.isfile(pic_file):
+            raise ValueError(f"File not found: {pic_file}")
+
+        # Validate file extension
+        ext = os.path.splitext(pic_file)[1].lower()
+        if ext not in [".jpg", ".jpeg", ".png"]:
+            raise ValueError(
+                f"Unsupported file type: {ext}. Only jpg/png files are supported."
+            )
+
         return self.image_processor.pic2file(
             pic_file=pic_file,
             process_type="layout",
-            concurrent_limit=concurrent_limit or self.thread,
+            concurrent_limit=concurrent_limit,
+            zip_path=zip_path,
         )
 
     async def pdf2file_back(
