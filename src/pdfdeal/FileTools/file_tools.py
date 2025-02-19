@@ -163,6 +163,8 @@ def get_files(path: str, mode: str, out: str) -> Tuple[list, list]:
     mode = Support_File_Type(mode)
     if isinstance(mode, Support_File_Type):
         mode = mode.value
+    if not out:
+        out = "md_dollar"
     if out != "pdf":
         out = OutputFormat(out)
         if isinstance(out, OutputFormat):

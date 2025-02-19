@@ -183,7 +183,7 @@ class Doc2X:
         self,
         pic_file,
         concurrent_limit: Optional[int] = None,
-    ) -> tuple[Dict[str, Dict[str, Union[dict, str]]], List[dict], bool]:
+    ) -> tuple[List[Union[list, str]], List[dict], bool]:
         """Process image files with OCR
 
         Args:
@@ -192,7 +192,7 @@ class Doc2X:
 
         Returns:
             Tuple containing:
-                - Dictionary mapping file paths to their OCR results
+                - List of OCR results (list or str) for each file
                 - List of dictionaries containing error information
                 - Boolean indicating if any errors occurred
         """
@@ -217,7 +217,7 @@ class Doc2X:
 
         Returns:
             Tuple containing:
-                - List containing the layout analysis result (empty string if failed)
+                - List of layout analysis results (list or str)
                 - List of dictionaries containing error information
                 - Boolean indicating if any errors occurred
 
