@@ -185,7 +185,7 @@ class Doc2X:
     def picocr(
         self,
         pic_file,
-        concurrent_limit: Optional[int] = None,
+        concurrent_limit: Optional[int] = 5,
     ) -> tuple[List[Union[list, str]], List[dict], bool]:
         """Process image files with OCR
 
