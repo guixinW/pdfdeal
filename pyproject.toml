@@ -1,8 +1,8 @@
 [project]
 name = "pdfdeal"
-version = "1.0.2"
-authors = [{ name = "Menghuan1918", email = "menghuan@menghuan1918.com" }]
-description = "A python wrapper for the Doc2X API and comes with native texts processing (to improve texts recall in RAG)."
+version = "1.0.3"
+authors = [{ name = "noedgeai", email = "support@noedgeai.com" }]
+description = "Python SDK for Doc2X API and some native texts processing (to improve texts recall in RAG)."
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [
@@ -35,10 +35,10 @@ dev = [
 ]
 
 [project.urls]
-Issues = "https://github.com/Menghuan1918/pdfdeal/issues"
-Documentation = "https://menghuan1918.github.io/pdfdeal-docs/"
-Source = "https://github.com/Menghuan1918/pdfdeal"
-Changelog = "https://menghuan1918.github.io/pdfdeal-docs/changes/"
+Issues = "https://github.com/NoEdgeAI/pdfdeal/issues"
+Documentation = "https://noedgeai.github.io/pdfdeal-docs"
+Source = "https://github.com/NoEdgeAI/pdfdeal"
+Changelog = "https://noedgeai.github.io/pdfdeal-docs/changes"
 
 [project.scripts]
 doc2x = "pdfdeal.CLI.doc2x:main"

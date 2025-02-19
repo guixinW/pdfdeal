@@ -6,7 +6,7 @@ from .Doc2X.Exception import RateLimit, run_async
 from .FileTools.file_tools import get_files
 import os
 
-logger = logging.getLogger("pdfdeal.doc2x_img")
+logger = logging.getLogger("pdfdeal.doc2x")
 
 
 class ImageProcessor:
@@ -68,17 +68,26 @@ class ImageProcessor:
             raise ValueError("process_type must be one of: 'ocr', 'layout'")
 
         try:
+            logger.info(f"Starting {process_type} processing for {image_path}")
             if process_type == "ocr":
                 await self._check_rate_limit()
                 tex_lines, uid = await parse_image_ocr(self.apikey, image_path)
+                logger.info(
+                    f"Successfully completed OCR for {image_path} with uid {uid}"
+                )
                 return tex_lines, uid, True
             else:
                 await self._check_rate_limit()
                 pages, uid = await parse_image_layout(self.apikey, image_path, zip_path)
+                logger.info(
+                    f"Successfully completed layout analysis for {image_path} with uid {uid}"
+                )
+                if zip_path:
+                    logger.info(f"Layout results saved to zip file at {zip_path}")
                 return pages, uid, True
 
         except RateLimit as e:
-            logger.error(f"Rate limit exceeded: {str(e)}")
+            logger.error(f"Rate limit exceeded while processing {image_path}: {str(e)}")
             raise
         except Exception as e:
             logger.error(f"Error processing image {image_path}: {str(e)}")
@@ -111,6 +120,7 @@ class ImageProcessor:
             index: int,
         ) -> tuple[int, str, tuple[list, str, bool]]:
             async with semaphore:
+                logger.debug(f"Processing image {index + 1}/{len(image_paths)}: {path}")
                 result = await self.process_image(path, process_type, zip_path)
                 return index, path, result
 
@@ -120,6 +130,7 @@ class ImageProcessor:
         processed_results = [[] for _ in range(len(image_paths))]
         success_status = {}
 
+        success_count = 0
         for result in results:
             if isinstance(result, Exception):
                 logger.error(f"Failed to process a file: {str(result)}")
@@ -128,7 +139,12 @@ class ImageProcessor:
             index, path, (result_list, _, success) = result
             processed_results[index] = result_list if success else []
             success_status[path] = success
+            if success:
+                success_count += 1
 
+        logger.info(
+            f"Batch processing completed. Successfully processed {success_count}/{len(image_paths)} images"
+        )
         return processed_results, success_status
 
     async def pic2file_back(
@@ -170,18 +186,26 @@ class ImageProcessor:
 
         # Convert results to final format
         final_results = []
+        success_count = 0
         for i, path in enumerate(pic_file):
             if not success_status.get(path, False):
                 failed_files.append({"error": "Processing failed", "path": path})
                 final_results.append("")
                 has_error = True
+                logger.error(f"Failed to process {path}")
             else:
                 failed_files.append({"error": "", "path": ""})
                 final_results.append(results[i])
+                success_count += 1
+                logger.debug(f"Successfully processed {path}")
 
         if has_error:
             logger.error(
-                f"Failed to process {len([f for f in failed_files if f['error']])} file(s)"
+                f"Processing completed with errors: {len([f for f in failed_files if f['error']])} file(s) failed"
+            )
+        else:
+            logger.info(
+                f"Processing completed successfully: {success_count} file(s) processed"
             )
 
         return final_results, failed_files, has_error

@@ -501,6 +501,13 @@ async def parse_image_layout(
     if zip_path is None:
         base_name = os.path.splitext(os.path.basename(image_path))[0]
         zip_path = f"{base_name}picture.zip"
+    if not os.path.exists(zip_path):
+        os.makedirs(os.path.dirname(zip_path), exist_ok=True)
+    # Check zip_path is a file path and not exists
+    if os.path.isfile(zip_path):
+        raise FileError("zip_path already exists! Please check the path")
+    if not zip_path.endswith(".zip"):
+        raise FileError("zip_path must end with .zip")
     # Check file size
     if os.path.getsize(image_path) > 3 * 1024 * 1024:  # 3MB
         raise FileError("Image file size exceeds 3MB limit")
