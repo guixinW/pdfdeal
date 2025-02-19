@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import Tuple, List, Dict, Union, Optional
+from typing import Tuple, List, Union, Optional
 import logging
 from .Doc2X.ConvertV2 import (
     upload_pdf,
@@ -97,11 +97,14 @@ async def convert_to_format(
     output_path: str,
     output_name: str,
     max_time: int,
+    merge_cross_page_forms: bool = False,
 ) -> str:
     """Convert parsed PDF to specified format"""
 
     logger.info(f"Converting {uid} to {output_format}...")
-    status, url = await convert_parse(apikey, uid, output_format)
+    status, url = await convert_parse(
+        apikey, uid, output_format, merge_cross_page_forms=merge_cross_page_forms
+    )
     for _ in range(max_time // 3):
         if status == "Success":
             logger.info(f"Downloading {uid} {output_format} file to {output_path}...")
@@ -250,6 +253,7 @@ class Doc2X:
         output_format: str = "md_dollar",
         convert: bool = False,
         oss_choose: str = "auto",
+        merge_cross_page_forms: bool = False,
     ) -> Tuple[List[str], List[dict], bool]:
         if isinstance(pdf_file, str):
             if os.path.isdir(pdf_file):
@@ -403,6 +407,7 @@ class Doc2X:
                             output_path=output_path,
                             output_name=name_fmt,
                             max_time=self.max_time,
+                            merge_cross_page_forms=merge_cross_page_forms,
                         )
                         all_results.append(result)
                         all_errors.append("")
@@ -517,31 +522,25 @@ class Doc2X:
         convert: bool = False,
         oss_choose: str = "always",
         ocr: bool = False,
+        merge_cross_page_forms: bool = False,
     ) -> Tuple[List[str], List[dict], bool]:
-        """Convert PDF files to the specified format.
+        """Convert PDF file to specified format
 
         Args:
-            pdf_file (str | List[str]): Path to a single PDF file or a list of PDF file paths.
-            output_names (List[str], optional): List of output file names. Defaults to None.
-            output_path (str, optional): Directory path for output files. Defaults to "./Output".
-            output_format (str, optional): Desired output format. Defaults to `md_dollar`. Supported formats include:`md_dollar`|`md`|`tex`|`docx`, will return the path of files, support output variable: `text`|`texts`|`detailed`(it means `string in md format`, `list of strings split by page`, `list of strings split by page (including detailed page information)`)
-            convert (bool, optional): Whether to convert "[" and "[[" to "$" and "$$", only valid if `output_format` is a variable format(`txt`|`txts`|`detailed`). Defaults to False.
-            oss_choose (str, optional): Now can upload files directly through API or through OSS link given by API. Acceptable values: `auto`, `always`, `never` (it means `Only >=100MB files will be uploaded to OSS`, `All files will be uploaded to OSS`, `All files will be uploaded directly`). Defaults to "always".
-            ocr (bool, optional): This option is deprecated and will not be used.
+            pdf_file (str or list): The path of the PDF file or a list of PDF file paths
+            output_names (List[str], optional): The output file names. Defaults to None.
+            output_path (str, optional): The output path. Defaults to "./Output".
+            output_format (str, optional): The output format. Defaults to "md_dollar".
+            convert (bool, optional): Convert "[" and "[[" to "$" and "$$". Defaults to False.
+            oss_choose (str, optional): OSS upload preference. "always" for always using OSS, "auto" for using OSS only when the file size exceeds 100MB, "never" for never using OSS. Defaults to "always".
+            ocr (bool, optional): Whether to use OCR. Defaults to False.
+            merge_cross_page_forms (bool, optional): Whether to merge cross-page forms. Defaults to False.
 
         Returns:
             Tuple[List[str], List[dict], bool]: A tuple containing:
-                1. A list of successfully converted file paths or content.
-                2. A list of dictionaries containing error information for failed conversions.
-                3. A boolean indicating whether any errors occurred during the conversion process.
-
-        Raises:
-            Any exceptions raised by pdf2file_back or run_async.
-
-        Note:
-            This method provides a convenient synchronous interface for the asynchronous
-            PDF conversion functionality. It handles all the necessary setup for running
-            the asynchronous code in a synchronous context.
+                - List[str]: List of output file paths
+                - List[dict]: List of error messages
+                - bool: Whether there was an error
         """
         if ocr:
             import warnings
@@ -551,7 +550,6 @@ class Doc2X:
                 DeprecationWarning,
                 stacklevel=2,
             )
-
         return run_async(
             self.pdf2file_back(
                 pdf_file=pdf_file,
@@ -560,5 +558,6 @@ class Doc2X:
                 output_format=output_format,
                 convert=convert,
                 oss_choose=oss_choose,
+                merge_cross_page_forms=merge_cross_page_forms,
             )
         )

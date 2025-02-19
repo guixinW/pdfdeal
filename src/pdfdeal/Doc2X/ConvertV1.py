@@ -10,8 +10,7 @@ import warnings
 Base_URL = "https://api.doc2x.noedgeai.com/api"
 
 warnings.warn(
-    "V1 API is deprecated and will be removed in a future version. "
-    "Use V2 API instead.",
+    "V1 API is deprecated and will be removed in a future version. Use V2 API instead.",
     DeprecationWarning,
     stacklevel=2,
 )

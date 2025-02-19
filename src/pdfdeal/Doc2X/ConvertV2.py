@@ -247,7 +247,11 @@ async def uid_status(
 
 @async_retry()
 async def convert_parse(
-    apikey: str, uid: str, to: str, filename: str = None
+    apikey: str,
+    uid: str,
+    to: str,
+    filename: str = None,
+    merge_cross_page_forms: bool = False,
 ) -> Tuple[str, str]:
     """Convert parsed file to specified format
 
@@ -256,6 +260,7 @@ async def convert_parse(
         uid (str): The uid of the parsed file
         to (str): Export format, supports: md|tex|docx|md_dollar
         filename (str, optional): Output filename for md/tex (without extension). Defaults to None.
+        merge_cross_page_forms (bool, optional): Whether to merge cross-page forms. Defaults to False.
 
     Raises:
         ValueError: If 'to' is not a valid format
@@ -271,7 +276,12 @@ async def convert_parse(
     if isinstance(to, OutputFormat):
         to = to.value
 
-    payload = {"uid": uid, "to": to, "formula_mode": "normal"}
+    payload = {
+        "uid": uid,
+        "to": to,
+        "formula_mode": "normal",
+        "merge_cross_page_forms": merge_cross_page_forms,
+    }
     if filename and to in ["md", "md_dollar", "tex"]:
         payload["filename"] = filename
     if to == "md_dollar":
