@@ -47,7 +47,6 @@ async def pdf2file_v1(
     pdf_path: str,
     output_path: str,
     output_format: str,
-    ocr: bool,
     maxretry: int,
     rpm: int,
     convert: bool,
@@ -63,7 +62,6 @@ async def pdf2file_v1(
         uuid = await upload_pdf(
             apikey=apikey,
             pdffile=pdf_path,
-            ocr=ocr,
             translate=translate,
             language=language,
             model=model,
@@ -76,7 +74,6 @@ async def pdf2file_v1(
                 uuid = await upload_pdf(
                     apikey=apikey,
                     pdffile=pdf_path,
-                    ocr=ocr,
                     translate=translate,
                     language=language,
                     model=model,
@@ -313,7 +310,6 @@ class Doc2X:
         pdf_file: list,
         output_path: str = "./Output",
         output_format: str = "md_dollar",
-        ocr: bool = True,
         convert: bool = False,
         translate: bool = False,
         language: str = "zh",
@@ -333,7 +329,6 @@ class Doc2X:
                     pdf_path=pdf,
                     output_path=output_path,
                     output_format=output_format,
-                    ocr=ocr,
                     maxretry=self.maxretry,
                     rpm=self.rpm,
                     convert=convert,
@@ -356,7 +351,6 @@ class Doc2X:
         output_path: str = "./Output",
         output_names: list = None,
         output_format: str = "md_dollar",
-        ocr: bool = True,
         convert: bool = False,
     ) -> Tuple[list, list, bool]:
         """Convert pdf file to specified file
@@ -366,7 +360,6 @@ class Doc2X:
             output_path (str, optional): output folder path. Defaults to "./Output".
             output_names (list, optional): Custom Output File Names, must be the same length as `pdf_file`. Defaults to None.
             output_format (str, optional): output format, accept `texts`, `md`, `md_dollar`, `latex`, `docx`. Defaults to `md_dollar`.
-            ocr (bool, optional): whether to use OCR. Defaults to True.
             convert (bool, optional): whether to convert `[` to `$` and `[[` to `$$`. Defaults to False.
 
         Raises:
@@ -394,7 +387,7 @@ class Doc2X:
 
         success, failed, flag = run_async(
             self.pdf2file_back(
-                pdf_file, output_path, output_format, ocr, convert, False
+                pdf_file, output_path, output_format, convert, False
             )
         )
         logging.info(
@@ -439,7 +432,6 @@ class Doc2X:
                 pdf_path=input,
                 output_path=output,
                 output_format="texts",
-                ocr=True,
                 maxretry=self.maxretry,
                 rpm=self.rpm,
                 convert=convert,

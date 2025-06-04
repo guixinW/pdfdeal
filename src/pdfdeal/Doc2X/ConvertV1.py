@@ -10,8 +10,7 @@ import warnings
 Base_URL = "https://api.doc2x.noedgeai.com/api"
 
 warnings.warn(
-    "V1 API is deprecated and will be removed in a future version. "
-    "Use V2 API instead.",
+    "V1 API is deprecated and will be removed in a future version. Use V2 API instead.",
     DeprecationWarning,
     stacklevel=2,
 )
@@ -151,7 +150,6 @@ async def get_limit(apikey: str) -> int:
 async def upload_pdf(
     apikey: str,
     pdffile: str,
-    ocr: bool = True,
     translate: bool = False,
     language: str = "zh",
     model: str = "deepseek",
@@ -161,7 +159,6 @@ async def upload_pdf(
     Args:
         apikey (str): The key
         pdffile (str): The pdf file path
-        ocr (bool, optional): Do OCR or not. Defaults to True.
         translate (bool, optional): Do translate or not. Defaults to False.
         language (str, optional): The language of the file. Defaults to "zh", only valid when translate is True.
         model (str, optional): The model of the file. Defaults to "deepseek", only valid when translate is True.
@@ -185,7 +182,6 @@ async def upload_pdf(
             raise FileError("PDF dile size should be less than 100MB!")
     except Exception as e:
         raise FileError(f"Open file error! {e}")
-    ocr = 1 if ocr else 0
     translate = 2 if translate else 1
     timeout = httpx.Timeout(120)
     if translate == 1:
@@ -194,7 +190,6 @@ async def upload_pdf(
                 url,
                 headers={"Authorization": "Bearer " + apikey},
                 files=file,
-                data={"ocr": ocr, "parse_to": translate},
             )
     else:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -203,7 +198,6 @@ async def upload_pdf(
                 headers={"Authorization": "Bearer " + apikey},
                 files=file,
                 data={
-                    "ocr": ocr,
                     "parse_to": translate,
                     "lang": language,
                     "model": model,

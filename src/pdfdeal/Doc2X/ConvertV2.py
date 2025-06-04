@@ -6,10 +6,28 @@ from typing import Tuple
 from .Exception import RateLimit, FileError, RequestError, async_retry, code_check
 import logging
 from .Types import OutputFormat
+import base64
 
 Base_URL = "https://v2.doc2x.noedgeai.com/api"
 
 logger = logging.getLogger("pdfdeal.convertV2")
+
+# Add new error codes for image processing
+IMAGE_ERROR_CODES = {
+    "parse_quota_limit": "可用的解析额度不足 (Insufficient parsing quota)",
+    "parse_error": "解析错误 (Parsing error)",
+    "parse_file_invalid": "解析文件错误或者不合法 (Invalid or illegal image file)",
+    "request_limit_exceeded": "请求频率超过限制 (Request frequency limit exceeded)",
+    "parse_file_too_large": "单个图片大小超过限制 (Image size exceeds limit)",
+}
+
+IMAGE_ERROR_SOLUTIONS = {
+    "parse_quota_limit": "当前可用的额度不够 (Current available quota is insufficient)",
+    "parse_error": "图片内容无法解析，请反馈给我们 (Image content cannot be parsed, please provide feedback)",
+    "parse_file_invalid": "无法解析这个图片，一般是图片不合法 (Cannot parse this image, usually due to invalid format)",
+    "request_limit_exceeded": "请等待一段时间后再请求 (Please wait for a while before making another request)",
+    "parse_file_too_large": "当前允许单个图片大小 <= 3M，尝试对图片进行压缩 (Current single image size limit is <= 3M, try compressing the image)",
+}
 
 
 @async_retry(timeout=200)
@@ -229,7 +247,11 @@ async def uid_status(
 
 @async_retry()
 async def convert_parse(
-    apikey: str, uid: str, to: str, filename: str = None
+    apikey: str,
+    uid: str,
+    to: str,
+    filename: str = None,
+    merge_cross_page_forms: bool = False,
 ) -> Tuple[str, str]:
     """Convert parsed file to specified format
 
@@ -238,6 +260,7 @@ async def convert_parse(
         uid (str): The uid of the parsed file
         to (str): Export format, supports: md|tex|docx|md_dollar
         filename (str, optional): Output filename for md/tex (without extension). Defaults to None.
+        merge_cross_page_forms (bool, optional): Whether to merge cross-page forms. Defaults to False.
 
     Raises:
         ValueError: If 'to' is not a valid format
@@ -253,7 +276,12 @@ async def convert_parse(
     if isinstance(to, OutputFormat):
         to = to.value
 
-    payload = {"uid": uid, "to": to, "formula_mode": "normal"}
+    payload = {
+        "uid": uid,
+        "to": to,
+        "formula_mode": "normal",
+        "merge_cross_page_forms": merge_cross_page_forms,
+    }
     if filename and to in ["md", "md_dollar", "tex"]:
         payload["filename"] = filename
     if to == "md_dollar":
@@ -369,3 +397,101 @@ async def download_file(
             f.write(response.content)
 
     return file_path
+
+
+async def image_code_check(code: str, trace_id: str = None):
+    """Check image processing error codes and raise appropriate exceptions
+
+    Args:
+        code (str): The error code to check
+        trace_id (str, optional): The trace ID for debugging. Defaults to None.
+
+    Raises:
+        RateLimit: When rate limit is reached
+        RequestError: When a known error occurs
+        ValueError: When API key is unauthorized
+        Exception: When an unknown error occurs
+    """
+    if code == "request_limit_exceeded":
+        raise RateLimit(trace_id=trace_id)
+    if code in IMAGE_ERROR_CODES:
+        raise RequestError(code, trace_id=trace_id)
+    if code == "unauthorized":
+        raise ValueError("API key is unauthorized. (认证失败，请检测API key是否正确)")
+    if code not in ["ok", "success"]:
+        raise Exception(f"Unknown error code: {code}, Trace ID: {trace_id}")
+
+@async_retry()
+async def parse_image_layout(
+    apikey: str, image_path: str, zip_path: str = None
+) -> tuple[list, str]:
+    """Parse image layout
+
+    Args:
+        apikey (str): The API key
+        image_path (str): Path to the image file
+        zip_path (str, optional): Path to save the zip file containing images. Defaults to image_name + 'picture.zip'.
+
+    Raises:
+        FileError: If file size exceeds limit or file cannot be opened
+        RateLimit: If rate limit is reached
+        RequestError: If parsing fails
+        Exception: For any other errors
+
+    Returns:
+        tuple: A tuple containing:
+            - list: List of page dictionaries with page dimensions and md content
+            - str: The unique identifier (uid) of the request
+    """
+    if zip_path is None:
+        base_name = os.path.splitext(os.path.basename(image_path))[0]
+        zip_path = f"{base_name}picture.zip"
+    if not os.path.exists(zip_path):
+        os.makedirs(os.path.dirname(zip_path), exist_ok=True)
+    # Check zip_path is a file path and not exists
+    if os.path.isfile(zip_path):
+        raise FileError("zip_path already exists! Please check the path")
+    if not zip_path.endswith(".zip"):
+        raise FileError("zip_path must end with .zip")
+    # Check file size
+    if os.path.getsize(image_path) > 3 * 1024 * 1024:  # 3MB
+        raise FileError("Image file size exceeds 3MB limit")
+
+    url = f"{Base_URL}/v2/parse/img/layout"
+
+    try:
+        with open(image_path, "rb") as f:
+            file = f.read()
+    except Exception as e:
+        raise FileError(f"Open file error! {e}")
+
+    async with httpx.AsyncClient(timeout=httpx.Timeout(30), http2=True) as client:
+        response = await client.post(
+            url,
+            headers={"Authorization": f"Bearer {apikey}"},
+            content=file,
+        )
+
+    trace_id = response.headers.get("trace-id", "Failed to get trace-id")
+
+    if response.status_code == 429:
+        raise RateLimit(trace_id=trace_id)
+
+    if response.status_code != 200:
+        raise Exception(
+            f"Image layout parsing failed: {response.status_code}:{response.text}"
+        )
+
+    data = response.json()
+    await image_code_check(data.get("code", ""), trace_id=trace_id)
+
+    # Save zip file if path provided and zip content exists
+    if zip_path and data.get("data", {}).get("convert_zip"):
+        zip_content = base64.b64decode(data["data"]["convert_zip"])
+        with open(zip_path, "wb") as f:
+            f.write(zip_content)
+
+    return (
+        data.get("data", {}).get("result", {}).get("pages", []),
+        data.get("data", {}).get("uid", "Failed to get uid"),
+    )
