@@ -14,23 +14,30 @@ class ImageProcessor:
 
     def __init__(self, apikey: str):
         """Initialize the image processor
-
         Args:
             apikey (str): API key for authentication
         """
         self.apikey = apikey
         self._request_times: List[float] = []
-        self._lock = asyncio.Lock()
+        self._lock = None
+        self._loop = None
+
+    async def _get_lock(self) -> asyncio.Lock:
+        if self._lock is None:
+            # Get the loop from the current async context
+            self._loop = asyncio.get_running_loop()
+            self._lock = asyncio.Lock(loop=self._loop) # Pass the loop explicitly
+        return self._lock
 
     async def _check_rate_limit(self):
         """Check and enforce rate limit (120 requests per 30 seconds)"""
-        async with self._lock:
+        lock = await self._get_lock()
+        async with lock:
             current_time = asyncio.get_event_loop().time()
             # Remove requests older than 30 seconds
             self._request_times = [
                 t for t in self._request_times if current_time - t <= 30
             ]
-
             if len(self._request_times) >= 120:
                 # Calculate wait time if rate limit reached
                 wait_time = 30 - (current_time - self._request_times[0])
@@ -41,7 +48,6 @@ class ImageProcessor:
                     await asyncio.sleep(wait_time)
                     # Recursive call after waiting to ensure we're still within limits
                     await self._check_rate_limit()
-
             self._request_times.append(current_time)
 
     async def process_image(
@@ -78,8 +84,9 @@ class ImageProcessor:
                 if zip_path:
                     logger.info(f"Layout results saved to zip file at {zip_path}")
                 return pages, uid, True
-            return None, None, False
-
+            else:
+                logger.error(f"Error process_type: {process_type}")
+                raise ValueError(f"Unsupported process_type: '{process_type}'")
         except RateLimit as e:
             logger.error(f"Rate limit exceeded while processing {image_path}: {str(e)}")
             raise
@@ -117,7 +124,6 @@ class ImageProcessor:
                 logger.debug(f"Processing image {index + 1}/{len(image_paths)}: {path}")
                 result = await self.process_image(path, process_type, zip_path)
                 return index, path, result
-
         tasks = [process_with_semaphore(path, i) for i, path in enumerate(image_paths)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -201,7 +207,6 @@ class ImageProcessor:
             logger.info(
                 f"Processing completed successfully: {success_count} file(s) processed"
             )
-
         return final_results, failed_files, has_error
 
     def pic2file(
