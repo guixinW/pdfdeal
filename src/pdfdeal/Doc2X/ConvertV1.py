@@ -10,7 +10,8 @@ import warnings
 Base_URL = "https://api.doc2x.noedgeai.com/api"
 
 warnings.warn(
-    "V1 API is deprecated and will be removed in a future version. Use V2 API instead.",
+    "V1 API is deprecated and will be removed in a future version. "
+    "Use V2 API instead.",
     DeprecationWarning,
     stacklevel=2,
 )
@@ -70,10 +71,10 @@ async def check_folder(path: str) -> bool:
 
 @async_retry()
 async def uuid2file(
-    apikey: str,
-    uuid: str,
-    output_format: Literal["md", "md_dollar", "latex", "docx"],
-    output_path: str = "./Output",
+        apikey: str,
+        uuid: str,
+        output_format: Literal["md", "md_dollar", "latex", "docx"],
+        output_path: str = "./Output",
 ) -> str:
     """Get the file by the uuid
 
@@ -148,17 +149,19 @@ async def get_limit(apikey: str) -> int:
 
 @async_retry()
 async def upload_pdf(
-    apikey: str,
-    pdffile: str,
-    translate: bool = False,
-    language: str = "zh",
-    model: str = "deepseek",
+        apikey: str,
+        pdffile: str,
+        ocr: bool = True,
+        translate: bool = False,
+        language: str = "zh",
+        model: str = "deepseek",
 ) -> str:
     """Upload pdf file to server and return the uuid of the file
 
     Args:
         apikey (str): The key
         pdffile (str): The pdf file path
+        ocr (bool, optional): Do OCR or not. Defaults to True.
         translate (bool, optional): Do translate or not. Defaults to False.
         language (str, optional): The language of the file. Defaults to "zh", only valid when translate is True.
         model (str, optional): The model of the file. Defaults to "deepseek", only valid when translate is True.
@@ -182,6 +185,7 @@ async def upload_pdf(
             raise FileError("PDF dile size should be less than 100MB!")
     except Exception as e:
         raise FileError(f"Open file error! {e}")
+    ocr = 1 if ocr else 0
     translate = 2 if translate else 1
     timeout = httpx.Timeout(120)
     if translate == 1:
@@ -190,6 +194,7 @@ async def upload_pdf(
                 url,
                 headers={"Authorization": "Bearer " + apikey},
                 files=file,
+                data={"ocr": ocr, "parse_to": translate},
             )
     else:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -198,6 +203,7 @@ async def upload_pdf(
                 headers={"Authorization": "Bearer " + apikey},
                 files=file,
                 data={
+                    "ocr": ocr,
                     "parse_to": translate,
                     "lang": language,
                     "model": model,
@@ -206,8 +212,8 @@ async def upload_pdf(
     if post_res.status_code == 200:
         try:
             if (
-                "parse_task_limit_exceeded"
-                == json.loads(post_res.content.decode("utf-8"))["code"]
+                    "parse_task_limit_exceeded"
+                    == json.loads(post_res.content.decode("utf-8"))["code"]
             ):
                 raise RateLimit()
             else:
@@ -228,10 +234,10 @@ async def upload_pdf(
 
 @async_retry()
 async def upload_img(
-    apikey: str,
-    imgfile: str,
-    formula: bool = False,
-    img_correction: bool = False,
+        apikey: str,
+        imgfile: str,
+        formula: bool = False,
+        img_correction: bool = False,
 ) -> str:
     """Upload image file to server and return the uuid of the file
 
@@ -273,8 +279,8 @@ async def upload_img(
     if post_res.status_code == 200:
         try:
             if (
-                "parse_task_limit_exceeded"
-                == json.loads(post_res.content.decode("utf-8"))["code"]
+                    "parse_task_limit_exceeded"
+                    == json.loads(post_res.content.decode("utf-8"))["code"]
             ):
                 raise RateLimit()
             else:
@@ -375,10 +381,10 @@ async def decode_translate(datas: json, convert: bool) -> Tuple[list, list]:
 
 @async_retry()
 async def uuid_status(
-    apikey: str,
-    uuid: str,
-    convert: bool = False,
-    translate: bool = False,
+        apikey: str,
+        uuid: str,
+        convert: bool = False,
+        translate: bool = False,
 ) -> Tuple[int, str, list]:
     """Get the status of the file
 
