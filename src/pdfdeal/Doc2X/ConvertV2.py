@@ -464,10 +464,9 @@ async def parse_image_layout(
         os.makedirs(os.path.dirname(zip_path), exist_ok=True)
 
     # Check zip_path is a file path and not exists
-    if os.path.isfile(zip_path):
-        base_name, extension = os.path.splitext(zip_path)
-        random_digits = ''.join(random.choices(string.digits, k=10))
-        zip_path = f"{base_name}-副本-{random_digits}{extension}"
+    base_name, extension = os.path.splitext(zip_path)
+    random_digits = ''.join(random.choices(string.digits, k=10))
+    zip_path = f"{base_name}-{random_digits}{extension}"
         # raise FileError("zip_path already exists! Please check the path")
     if not zip_path.endswith(".zip"):
         raise FileError("zip_path must end with .zip")
