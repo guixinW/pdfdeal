@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from collections import deque
 from typing import Dict, List, Optional, Union
 from .Doc2X.ConvertV2 import parse_image_layout
 from .Doc2X.Exception import RateLimit, run_async
@@ -18,9 +19,11 @@ class ImageProcessor:
             apikey (str): API key for authentication
         """
         self.apikey = apikey
-        self._request_times: List[float] = []
+        self._request_times = deque()
         self._lock = None
         self._loop = None
+        self._rate = 30
+        self._period = 30
 
     async def _get_lock(self) -> asyncio.Lock:
         if self._lock is None:
@@ -30,25 +33,28 @@ class ImageProcessor:
         return self._lock
 
     async def _check_rate_limit(self):
-        """Check and enforce rate limit (120 requests per 30 seconds)"""
+        """Check and enforce rate limit (30 requests per 30 seconds)"""
         lock = await self._get_lock()
-        async with lock:
-            current_time = asyncio.get_event_loop().time()
-            # Remove requests older than 30 seconds
-            self._request_times = [
-                t for t in self._request_times if current_time - t <= 30
-            ]
-            if len(self._request_times) >= 120:
-                # Calculate wait time if rate limit reached
-                wait_time = 30 - (current_time - self._request_times[0])
-                if wait_time > 0:
-                    logger.warning(
-                        f"Rate limit reached, waiting for {wait_time:.2f} seconds"
-                    )
-                    await asyncio.sleep(wait_time)
-                    # Recursive call after waiting to ensure we're still within limits
-                    await self._check_rate_limit()
-            self._request_times.append(current_time)
+
+        while True:
+            async with lock:
+                current_time = asyncio.get_event_loop().time()
+                # Remove requests older than 30 seconds
+                while self._request_times and (current_time - self._request_times[0] > self._period):
+                    self._request_times.popleft()
+                if len(self._request_times) < self._rate:
+                    # Append new timestamp to sliding window
+                    self._request_times.append(current_time)
+                    return
+                # Wait time until oldest timestamp pop out
+                wait_time = self._period - (current_time - self._request_times[0])
+            # Sleep outside the critical section to avoid holding the lock during sleep
+            if wait_time > 0:
+                logger.warning(
+                    f"Rate limit reached, waiting for {wait_time:.2f} seconds. "
+                    f"Current count: {len(self._request_times)}"
+                )
+                await asyncio.sleep(wait_time)
 
     async def process_image(
         self, image_path: str, process_type: str = "layout", zip_path: str = None
