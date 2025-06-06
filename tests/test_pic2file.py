@@ -1,5 +1,4 @@
 import time
-
 from pdfdeal import Doc2X
 from pdfdeal.file_tools import get_files
 import logging
@@ -23,7 +22,6 @@ def test_single_pic2file():
     assert isinstance(errors[0], dict)
     assert "error" in errors[0]
     assert "path" in errors[0]
-
 
 def test_multiple_pic2file():
     client = Doc2X()
