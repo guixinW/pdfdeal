@@ -472,7 +472,7 @@ async def parse_image_layout(
     if not zip_path.endswith(".zip"):
         raise FileError("zip_path must end with .zip")
     # Check file size
-    if os.path.getsize(image_path) > 3 * 1024 * 1024:  # 7MB
+    if os.path.getsize(image_path) > 7 * 1024 * 1024:  # 7MB
         raise FileError("Image file size exceeds 7MB limit")
 
     url = f"{Base_URL}/v2/parse/img/layout"
