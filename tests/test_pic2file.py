@@ -1,3 +1,5 @@
+import time
+
 from pdfdeal import Doc2X
 from pdfdeal.file_tools import get_files
 import logging
@@ -39,7 +41,8 @@ def test_multiple_pic2file():
 
 def test_multiple_high_rpm():
     client = Doc2X()
-    file_list = ["tests/image/sample.png" for _ in range(20)]
+    time.sleep(30)
+    file_list = ["tests/image/sample.png" for _ in range(31)] #测试处理上限是否为30s/30 req
     results, errors, has_error = client.piclayout(
         pic_file=file_list,
         zip_path="./Output/test/highrpm/",
