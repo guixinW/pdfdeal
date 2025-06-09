@@ -97,9 +97,9 @@ async def convert_to_format(
         output_name: str,
         max_time: int,
         merge_cross_page_forms: bool = False,
+        save_subdir: bool = False,
 ) -> str:
     """Convert parsed PDF to specified format"""
-
     logger.info(f"Converting {uid} to {output_format}...")
     status, url = await convert_parse(
         apikey, uid, output_format, merge_cross_page_forms=merge_cross_page_forms
@@ -112,6 +112,7 @@ async def convert_to_format(
                 file_type=output_format,
                 target_folder=output_path,
                 target_filename=output_name or uid,
+                save_subdir=save_subdir,
             )
         elif status == "Processing":
             logger.info(f"Converting {uid} {output_format} file...")
@@ -216,6 +217,7 @@ class Doc2X:
             convert: bool = False,
             oss_choose: str = "auto",
             merge_cross_page_forms: bool = False,
+            save_subdir: bool = False,
     ) -> Tuple[List[str], List[dict], bool]:
         if isinstance(pdf_file, str):
             if os.path.isdir(pdf_file):
@@ -370,6 +372,7 @@ class Doc2X:
                             output_name=name_fmt,
                             max_time=self.max_time,
                             merge_cross_page_forms=merge_cross_page_forms,
+                            save_subdir=save_subdir
                         )
                         all_results.append(result)
                         all_errors.append("")
@@ -485,6 +488,7 @@ class Doc2X:
             oss_choose: str = "always",
             merge_cross_page_forms: bool = False,
             ocr: bool = False,
+            save_subdir: bool = False,
     ) -> Tuple[List[str], List[dict], bool]:
         """Convert PDF file to specified format
 
@@ -497,6 +501,7 @@ class Doc2X:
             oss_choose (str, optional): OSS upload preference. "always" for always using OSS, "auto" for using OSS only when the file size exceeds 100MB, "never" for never using OSS. Defaults to "always".
             merge_cross_page_forms (bool, optional): Whether to merge cross-page forms. Defaults to False.
             ocr (bool, optional): This option is deprecated and will not be used.
+            save_subdir(bool, optional): Save the output to a subfolder under output_path. Defaults to False.
         Returns:
             Tuple[List[str], List[dict], bool]: A tuple containing:
                 - List[str]: List of output file paths
@@ -520,5 +525,6 @@ class Doc2X:
                 convert=convert,
                 oss_choose=oss_choose,
                 merge_cross_page_forms=merge_cross_page_forms,
+                save_subdir=save_subdir,
             )
         )

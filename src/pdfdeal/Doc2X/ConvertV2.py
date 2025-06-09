@@ -363,7 +363,11 @@ async def get_convert_result(apikey: str, uid: str) -> Tuple[str, str]:
 
 @async_retry()
 async def download_file(
-        url: str, file_type: str, target_folder: str, target_filename: str
+        url: str,
+        file_type: str,
+        target_folder: str,
+        target_filename: str,
+        save_subdir: bool = False,
 ) -> str:
     """
     Download a file from the given URL to the specified target folder with the given filename.
@@ -373,6 +377,7 @@ async def download_file(
         file_type (str): The type of file being downloaded (e.g., 'zip', 'docx').
         target_folder (str): The folder where the file should be saved.
         target_filename (str): The desired filename for the downloaded file, can include subdirectories.
+        save_subdir(bool, optional): Save the output to a subfolder under output_path. Defaults to False.
 
     Raises:
         Exception: If there's an error creating the target folder or downloading the file.
@@ -383,8 +388,9 @@ async def download_file(
     target_path = os.path.join(target_folder, target_filename)
     target_dir = os.path.dirname(target_path)
     filename = os.path.basename(target_path)
+    if save_subdir:
+        target_dir = os.path.join(target_dir, os.path.splitext(os.path.basename(filename))[0])
     os.makedirs(target_dir, exist_ok=True)
-
     filename = os.path.splitext(filename)[0]
     if file_type != "docx":
         file_type = "zip"
