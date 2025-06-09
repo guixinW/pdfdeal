@@ -427,7 +427,7 @@ async def image_code_check(code: str, trace_id: str = None):
 
 @async_retry()
 async def parse_image_layout(
-        apikey: str, image_path: str, zip_path: str = None
+        apikey: str, image_path: str, zip_path: str = None, output_name: str = None
 ) -> tuple[list, str]:
     """Parse image layout
 
@@ -435,7 +435,7 @@ async def parse_image_layout(
         apikey (str): The API key
         image_path (str): Path to the image file
         zip_path (str, optional): Path to save the zip file containing images. Defaults to image_name + 'picture.zip'.
-
+        output_name (str): output file name. Defaults to None.
     Raises:
         FileError: If file size exceeds limit or file cannot be opened
         RateLimit: If rate limit is reached
@@ -449,8 +449,10 @@ async def parse_image_layout(
     """
     # Use the image name as the prefix for the zip file name
     default_zip_filename = os.path.splitext(os.path.basename(image_path))[0]
-    new_zip_filename = f"{default_zip_filename}picture.zip"
-    
+    print(f"default zip name{default_zip_filename}")
+    if output_name is not None:
+        default_zip_filename = output_name
+    new_zip_filename = default_zip_filename
     # Use zip_path + image name + picture.zip to name zip files
     if zip_path is None:
         parent_directory = os.path.dirname(image_path)

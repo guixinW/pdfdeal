@@ -9,6 +9,7 @@ class OutputFormat(str, Enum):
     LATEX = "tex"
     MD = "md"
     MD_DOLLAR = "md_dollar"
+    ZIP = "zip"
 
     @classmethod
     def _missing_(cls, value):

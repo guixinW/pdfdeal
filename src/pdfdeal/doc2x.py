@@ -86,7 +86,6 @@ async def parse_pdf(
                 raise RequestError(
                     "Max retry reached for parse_pdf, this may be a rate limit issue, try to reduce the number of threads."
                 )
-
     raise RequestError("Failed to parse PDF after maximum retries")
 
 
