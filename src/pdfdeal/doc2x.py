@@ -12,7 +12,7 @@ from .Doc2X.ConvertV2 import (
 from .Doc2X.Types import OutputFormat
 from .Doc2X.Pages import get_pdf_page_count
 from .Doc2X.Exception import RequestError, RateLimit, run_async
-from .FileTools.file_tools import get_files
+from .FileTools.file_tools import get_files, save_json
 import time
 from .doc2x_img import ImageProcessor
 
@@ -387,11 +387,16 @@ class Doc2X:
                             result = texts
                         elif fmt == "text":
                             result = "\n".join(texts)
-                        elif fmt == "detailed":
+                        elif fmt == "detailed" or fmt == "json":
                             result = [
                                 {"text": text, "location": loc}
                                 for text, loc in zip(texts, locations)
                             ]
+                            if fmt == "json":
+                                save_json(output_path=os.path.join(output_path, os.path.dirname(name_fmt)),
+                                          output_name=os.path.basename(name_fmt),
+                                          json_content=result)
+
                         all_results.append(result)
                         all_errors.append("")
 

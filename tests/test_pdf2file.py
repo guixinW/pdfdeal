@@ -2,6 +2,20 @@ from pdfdeal import Doc2X
 import os
 import pytest
 
+# 测试一个文件,output_format为json
+def test_pdf2json():
+    client = Doc2X(debug=True, thread=1)
+    output_path = "./Output/test/single/pdf2file"
+    filepath, failed, flag = client.pdf2file(
+        pdf_file="tests/pdf",
+        output_path=output_path,
+        output_format="json",
+        save_subdir=False,
+    )
+    print(filepath)
+    print(failed)
+    print(flag)
+    assert flag
 
 # 测试一个文件,output_format为md_dollar,tex,docx
 def test_single_pdf2file():

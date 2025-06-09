@@ -10,6 +10,7 @@ class OutputFormat(str, Enum):
     MD = "md"
     MD_DOLLAR = "md_dollar"
     ZIP = "zip"
+    JSON = "json"
 
     @classmethod
     def _missing_(cls, value):
