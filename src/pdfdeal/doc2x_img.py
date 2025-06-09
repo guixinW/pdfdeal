@@ -170,18 +170,9 @@ class ImageProcessor:
         Args:
             pic_file (str | List[str]): Path to image file(s) or directory
             process_type (str): Type of processing, can be 'layout'
-        process_type: str = "ocr",
-        concurrent_limit: Optional[int] = None,
-        zip_path: str = None,
-    ) -> tuple[List[Union[list, str]], List[dict], bool]:
-        """Process image files with OCR or layout analysis
-
-        Args:
-            pic_file (str | List[str]): Path to image file(s) or directory
-            process_type (str): Type of processing, can be 'ocr' or 'layout'
             concurrent_limit (int, optional): Maximum number of concurrent tasks. Defaults to None.
             zip_path (str, optional): Path to save the zip file for layout analysis. Defaults to None.
-            output_zip_names(List[str]): List of zip file name
+
         Returns:
             Tuple containing:
                 - List of results in order (empty string for failed items)
