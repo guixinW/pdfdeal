@@ -404,15 +404,15 @@ def auto_split_mds(
 
 
 def save_json(
-        output_path: str,
-        output_name: str,
-        json_content: list[dict] = None,
+    output_path: str,
+    output_name: str,
+    json_content: list[dict] = None,
 ):
-    """Save the json file
+    """Save the JSON file
     Args:
-        output_path (str): The path to save the json file
-        output_name(str):  json file name
-        json_content (list[dict]): The json content to save
+        output_path (str): The path to save the JSON file
+        output_name(str):  JSON file name
+        json_content (list[dict]): The JSON content to save
     """
     print(f"output path:{output_path}, output_name:{output_name}", )
     if json_content is None:
@@ -423,6 +423,8 @@ def save_json(
     os.makedirs(output_path, exist_ok=True)
     with open(final_json_path, 'w', encoding='utf-8') as f:
         json.dump(json_content, f, ensure_ascii=False, indent=4)
+
+
 
 
 

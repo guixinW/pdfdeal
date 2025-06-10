@@ -120,3 +120,13 @@ def test_all_fail_pdf2file():
     print(failed)
     print(flag)
     assert flag
+
+
+def test_export_history():
+    client = Doc2X(debug=True, thread=1)
+    output_path, failed, flag = client.pdf2file(
+        pdf_file="tests/pdf",
+        output_path="./Output/",
+        output_format="md",
+        export_history="./Output/history/history.csv",
+    )
